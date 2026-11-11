@@ -244,8 +244,11 @@ class TeslaApi {
     }
     this.log("[TeslaAPI] Wake timeout - proceeding anyway");
   }
-  async getVehicleData(vehicleId) {
-    const endpoints = "charge_state;climate_state;vehicle_state;drive_state;vehicle_config";
+  async getVehicleData(vehicleId, withLocation) {
+    // Firmware 2023.38+ only returns latitude/longitude when location_data is requested
+    // (needs the vehicle_location OAuth scope; shows the location icon in the car).
+    let endpoints = "charge_state;climate_state;vehicle_state;drive_state;vehicle_config";
+    if (withLocation) endpoints += ";location_data";
     const r = await this._request("GET", "/api/1/vehicles/" + vehicleId + "/vehicle_data?endpoints=" + encodeURIComponent(endpoints));
     if (r.status >= 400) {
       return Object.assign({}, r.data || {}, { httpStatus: r.status });

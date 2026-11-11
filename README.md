@@ -154,7 +154,7 @@ Or manually via cURL:
 
 ```bash
 # Step 1: Get authorization code (open in browser)
-https://auth.tesla.com/oauth2/v3/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&response_type=code&scope=openid%20vehicle_device_data%20vehicle_cmds%20vehicle_charging_cmds%20offline_access
+https://auth.tesla.com/oauth2/v3/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&response_type=code&scope=openid%20vehicle_device_data%20vehicle_location%20vehicle_cmds%20vehicle_charging_cmds%20offline_access
 
 # Step 2: Exchange code for tokens
 curl -X POST https://auth.tesla.com/oauth2/v3/token \
@@ -181,6 +181,10 @@ go build .
 ```
 
 Then set `proxyUrl` in config to `https://localhost:4443`.
+
+### 4. (Optional) "At Home" presence sensor
+
+Set `home_lat`, `home_long` and `home_radius` (meters, default 200) in the config to get an **At Home** occupancy sensor in HomeKit. This requests `location_data` (shows the location icon in the car) and needs the `vehicle_location` scope: enable it in your Tesla Developer app, then redo the OAuth flow to get new tokens.
 
 ---
 
@@ -226,7 +230,7 @@ Tokens are refreshed proactively **5 minutes before expiry** to avoid interrupti
 
 ### Commands fail (403/422)
 - For 2024+ vehicles, you need `tesla-http-proxy` configured via `proxyUrl`
-- Ensure your Tesla Developer app has the required scopes: `vehicle_device_data`, `vehicle_cmds`, `vehicle_charging_cmds`
+- Ensure your Tesla Developer app has the required scopes: `vehicle_device_data`, `vehicle_location`, `vehicle_cmds`, `vehicle_charging_cmds`
 
 ### Token refresh fails
 - Check that `clientId` and `clientSecret` are correct

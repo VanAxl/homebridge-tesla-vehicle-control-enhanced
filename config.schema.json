@@ -97,6 +97,23 @@
           "lightbulb"
         ],
         "description": "Charge current control type: thermostat or lightbulb"
+      },
+      "home_lat": {
+        "title": "Home Latitude",
+        "type": "number",
+        "description": "Optional: enables the 'At Home' sensor. Requires the vehicle_location scope."
+      },
+      "home_long": {
+        "title": "Home Longitude",
+        "type": "number",
+        "description": "Optional: enables the 'At Home' sensor."
+      },
+      "home_radius": {
+        "title": "Home Radius (meters)",
+        "type": "integer",
+        "default": 200,
+        "minimum": 20,
+        "description": "Distance under which the car is considered at home."
       }
     }
   }

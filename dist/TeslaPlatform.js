@@ -23,6 +23,7 @@ class TeslaPlatform {
     this.homeLatitude = parseFloat(config.home_lat || 0);
     this.homeLongitude = parseFloat(config.home_long || 0);
     this.homeRadiusMeters = parseInt(config.home_radius || 200);
+    this.homeEnabled = !!(this.homeLatitude && this.homeLongitude);
     this.batteryTile = String(config.battery_tile || "false").toLowerCase() === "true";
     this.chargeCurrentControl = String(config.charge_current_control || "thermostat").toLowerCase();
 
@@ -473,6 +474,17 @@ class TeslaPlatform {
     if (oldBattHumidity) accessory.removeService(oldBattHumidity);
   }
 
+  // Home presence (OccupancySensor): detected when the car is within home_radius of home_lat/home_long
+  if (this.homeEnabled) {
+    let homeService =
+      accessory.getServiceById(S.OccupancySensor, "carathome") ||
+      accessory.addService(S.OccupancySensor, n("At Home"), "carathome");
+    homeService.setCharacteristic(C.Name, n("At Home"));
+  } else {
+    const oldHome = accessory.getServiceById(S.OccupancySensor, "carathome");
+    if (oldHome) accessory.removeService(oldHome);
+  }
+
   // Battery Service native
   let batteryService = accessory.getService(S.Battery) || accessory.addService(S.Battery, n("Battery"), "battery");
 
@@ -540,7 +552,7 @@ class TeslaPlatform {
       this.pollInProgress = true;
       try {
         this.log(isOfflineRetry ? "Retrying vehicle data without waking the vehicle..." : "Polling vehicle data...");
-        const r = await this.tesla.getVehicleData(this.vehicleId);
+        const r = await this.tesla.getVehicleData(this.vehicleId, this.homeEnabled);
         if (isVehicleUnavailable(r)) {
           if (isOfflineRetry) {
             this.log("Vehicle data retry result: vehicle is still offline/asleep - keeping cached HomeKit data and returning to the normal polling cycle");
@@ -621,12 +633,38 @@ class TeslaPlatform {
     );
   }
 
+  _distanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const rad = (d) => d * Math.PI / 180;
+    const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+      Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  _isAtHome() {
+    const ds = this.vehicleData && this.vehicleData.drive_state;
+    if (!ds || typeof ds.latitude !== "number" || typeof ds.longitude !== "number") return null;
+    const d = this._distanceMeters(ds.latitude, ds.longitude, this.homeLatitude, this.homeLongitude);
+    return d <= this.homeRadiusMeters;
+  }
+
   updateAccessories() {
     this.log("updateAccessories called");
     if (!this.vehicleData) return;
     const C = this.Characteristic;
     const S = this.Service;
     for (const acc of this.accessories) {
+      // At home (location)
+      const homeService = acc.getServiceById(S.OccupancySensor, "carathome");
+      if (homeService) {
+        const atHome = this._isAtHome();
+        if (atHome === null) {
+          this.log("No location in vehicle data (check the vehicle_location scope and location_data)");
+        } else {
+          homeService.updateCharacteristic(C.OccupancyDetected, atHome ? C.OccupancyDetected.OCCUPANCY_DETECTED : C.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
+        }
+      }
+
       // Lock
       const lockService = acc.getService(S.LockMechanism);
       if (lockService && this.vehicleData.vehicle_state) {
