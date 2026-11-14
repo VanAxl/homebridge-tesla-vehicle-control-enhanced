@@ -99,7 +99,7 @@ class TeslaPlatform {
     // Lock
     let lockService = accessory.getService(S.LockMechanism) || accessory.addService(S.LockMechanism, n("Lock"), "lock");
     lockService.setCharacteristic(C.Name, n("Lock"));
-    lockService.getCharacteristic(C.LockTargetState).onSet(async (value) => {
+    lockService.getCharacteristic(C.LockTargetState).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         const locked = value === C.LockTargetState.SECURED;
@@ -109,7 +109,7 @@ class TeslaPlatform {
         this._updateLockState(lockService, locked);
         this.log(locked ? "Locked - HomeKit state updated" : "Unlocked - HomeKit state updated");
       } catch (e) { this.log("Lock error: " + e.message); }
-    });
+    }));
 
 
     // Climate (Thermostat)
@@ -133,26 +133,26 @@ class TeslaPlatform {
       }
       return C.TargetHeatingCoolingState.OFF;
     });
-    thermoService.getCharacteristic(C.TargetHeatingCoolingState).onSet(async (value) => {
+    thermoService.getCharacteristic(C.TargetHeatingCoolingState).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value === C.TargetHeatingCoolingState.OFF) { await this.tesla.climateOff(this.vehicleId); this.log("Climate OFF"); }
         else { await this.tesla.climateOn(this.vehicleId); this.log("Climate ON"); }
       } catch (e) { this.log("Climate error: " + e.message); }
-    });
+    }));
     thermoService.getCharacteristic(C.TargetTemperature).onGet(() => {
       if (this.vehicleData && this.vehicleData.climate_state) {
         return this.vehicleData.climate_state.driver_temp_setting || 20;
       }
       return 20;
     });
-    thermoService.getCharacteristic(C.TargetTemperature).onSet(async (value) => {
+    thermoService.getCharacteristic(C.TargetTemperature).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         await this.tesla.setTemp(this.vehicleId, value, value);
         this.log("Temperature set to " + value + "C");
       } catch (e) { this.log("Temperature error: " + e.message); }
-    });
+    }));
     thermoService.getCharacteristic(C.TemperatureDisplayUnits).onGet(() => C.TemperatureDisplayUnits.CELSIUS);
     thermoService.getCharacteristic(C.TargetTemperature).setProps({ minValue: 10, maxValue: 28, minStep: 0.5 });
     thermoService.updateCharacteristic(C.TargetTemperature, 20);
@@ -161,7 +161,7 @@ class TeslaPlatform {
     // Sentry Mode
     let sentryService = accessory.getServiceById(S.Switch, "sentry") || accessory.addService(S.Switch, n("Sentry"), "sentry");
     sentryService.setCharacteristic(C.Name, n("Sentry"));
-    sentryService.getCharacteristic(C.On).onSet(async (value) => {
+    sentryService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value) {
@@ -173,69 +173,69 @@ class TeslaPlatform {
           this.log("Sentry OFF");
         }
       } catch (e) { this.log("Sentry error: " + e.message); }
-    });
+    }));
 
     // Trunk (momentary)
     let trunkService = accessory.getServiceById(S.Switch, "trunk") || accessory.addService(S.Switch, n("Trunk"), "trunk");
     trunkService.setCharacteristic(C.Name, n("Trunk"));
-    trunkService.getCharacteristic(C.On).onSet(async (value) => {
+    trunkService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         if (value) { await this._ensureAwake(); await this.tesla.openTrunk(this.vehicleId); this.log("Trunk opened"); }
         setTimeout(() => trunkService.updateCharacteristic(C.On, false), 3000);
       } catch (e) { this.log("Trunk error: " + e.message); }
-    });
+    }));
 
     // Frunk (momentary)
     let frunkService = accessory.getServiceById(S.Switch, "frunk") || accessory.addService(S.Switch, n("Frunk"), "frunk");
     frunkService.setCharacteristic(C.Name, n("Frunk"));
-    frunkService.getCharacteristic(C.On).onSet(async (value) => {
+    frunkService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         if (value) { await this._ensureAwake(); await this.tesla.openFrunk(this.vehicleId); this.log("Frunk opened"); }
         setTimeout(() => frunkService.updateCharacteristic(C.On, false), 3000);
       } catch (e) { this.log("Frunk error: " + e.message); }
-    });
+    }));
 
     // Charge Port
     let chargePortService = accessory.getServiceById(S.Switch, "chargeport") || accessory.addService(S.Switch, n("Charge Port"), "chargeport");
     chargePortService.setCharacteristic(C.Name, n("Charge Port"));
-    chargePortService.getCharacteristic(C.On).onSet(async (value) => {
+    chargePortService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value) { await this.tesla.openChargePort(this.vehicleId); this.log("Charge port opened"); }
         else { await this.tesla.closeChargePort(this.vehicleId); this.log("Charge port closed"); }
       } catch (e) { this.log("Charge port error: " + e.message); }
-    });
+    }));
 
     // Charging
     let chargingService = accessory.getServiceById(S.Switch, "charging") || accessory.addService(S.Switch, n("Charging"), "charging");
     chargingService.setCharacteristic(C.Name, n("Charging"));
-    chargingService.getCharacteristic(C.On).onSet(async (value) => {
+    chargingService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value) { await this.tesla.startCharging(this.vehicleId); this.log("Charging started"); }
         else { await this.tesla.stopCharging(this.vehicleId); this.log("Charging stopped"); }
       } catch (e) { this.log("Charging error: " + e.message); }
-    });
+    }));
 
     // Flash Lights (momentary)
     let flashService = accessory.getServiceById(S.Switch, "flash") || accessory.addService(S.Switch, n("Flash Lights"), "flash");
     flashService.setCharacteristic(C.Name, n("Flash Lights"));
-    flashService.getCharacteristic(C.On).onSet(async (value) => {
+    flashService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         if (value) { await this._ensureAwake(); await this.tesla.flashLights(this.vehicleId); this.log("Lights flashed"); }
         setTimeout(() => flashService.updateCharacteristic(C.On, false), 2000);
       } catch (e) { this.log("Flash error: " + e.message); }
-    });
+    }));
 
     // Horn (momentary)
     let hornService = accessory.getServiceById(S.Switch, "horn") || accessory.addService(S.Switch, n("Horn"), "horn");
     hornService.setCharacteristic(C.Name, n("Horn"));
-    hornService.getCharacteristic(C.On).onSet(async (value) => {
+    hornService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         if (value) { await this._ensureAwake(); await this.tesla.honkHorn(this.vehicleId); this.log("Horn honked"); }
         setTimeout(() => hornService.updateCharacteristic(C.On, false), 2000);
       } catch (e) { this.log("Horn error: " + e.message); }
-    });
+    }));
 
     // Remove obsolete Dashcam cached service (not supported by Tesla Fleet API)
     const oldDashcamService = accessory.getServiceById(S.Switch, "dashcam");
@@ -247,35 +247,35 @@ class TeslaPlatform {
     // Vent Windows (toggle)
     let ventService = accessory.getServiceById(S.Switch, "vent") || accessory.addService(S.Switch, n("Windows"), "vent");
     ventService.setCharacteristic(C.Name, n("Windows"));
-    ventService.getCharacteristic(C.On).onSet(async (value) => {
+    ventService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value) { await this.tesla.ventWindows(this.vehicleId); this.log("Windows vented"); }
         else { await this.tesla.closeWindows(this.vehicleId); this.log("Windows closed"); }
       } catch (e) { this.log("Windows error: " + e.message); }
-    });
+    }));
 
     // Defrost (toggle)
     let defrostService = accessory.getServiceById(S.Switch, "defrost") || accessory.addService(S.Switch, n("Defrost"), "defrost");
     defrostService.setCharacteristic(C.Name, n("Defrost"));
-    defrostService.getCharacteristic(C.On).onSet(async (value) => {
+    defrostService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value) { await this.tesla.defrostOn(this.vehicleId); this.log("Defrost ON"); }
         else { await this.tesla.defrostOff(this.vehicleId); this.log("Defrost OFF"); }
       } catch (e) { this.log("Defrost error: " + e.message); }
-    });
+    }));
 
     // Steering Wheel Heater (toggle)
     let steeringService = accessory.getServiceById(S.Switch, "steeringheater") || accessory.addService(S.Switch,  n("Steering Wheel Heater"), "steeringheater");
     steeringService.setCharacteristic(C.Name, n("Steering Wheel Heater"));
-    steeringService.getCharacteristic(C.On).onSet(async (value) => {
+    steeringService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         await this.tesla.steeringWheelHeater(this.vehicleId, value);
         this.log("Steering wheel heater " + (value ? "ON" : "OFF"));
       } catch (e) { this.log("Steering heater error: " + e.message); }
-    });
+    }));
 
     // Charge Limit (Lightbulb brightness = 50-100%)
     let chargeLimitService = accessory.getServiceById(S.Lightbulb, "chargelimit") || accessory.addService(S.Lightbulb, n("Charge Limit"), "chargelimit");
@@ -288,14 +288,14 @@ class TeslaPlatform {
       }
       return 80;
     });
-    chargeLimitService.getCharacteristic(C.Brightness).onSet(async (value) => {
+    chargeLimitService.getCharacteristic(C.Brightness).onSet(this._fastSet(async (value) => {
       try {
         await this._ensureAwake();
         const limit = Math.max(50, Math.min(100, value));
         await this.tesla.setChargeLimit(this.vehicleId, limit);
         this.log("Charge limit set to " + limit + "%");
       } catch (e) { this.log("Charge limit error: " + e.message); }
-    });
+    }));
     chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
     chargeLimitService.updateCharacteristic(C.Brightness, 80);
 
@@ -322,7 +322,7 @@ class TeslaPlatform {
         return this._ampsToBrightness(amps);
       });
 
-      chargeAmpsService.getCharacteristic(C.Brightness).onSet(async (value) => {
+      chargeAmpsService.getCharacteristic(C.Brightness).onSet(this._fastSet(async (value) => {
         try {
           await this._ensureAwake();
           const amps = this._brightnessToAmps(value);
@@ -337,7 +337,7 @@ class TeslaPlatform {
         } catch (e) {
           this.log("Charge amps error: " + e.message);
         }
-      });
+      }));
 
       chargeAmpsService.getCharacteristic(C.Brightness).setProps({
         minValue: 0,
@@ -396,7 +396,7 @@ class TeslaPlatform {
         return this.vehicleData?.charge_state?.charge_current_request || 16;
       });
 
-      chargeAmpsHeaterCooler.getCharacteristic(C.HeatingThresholdTemperature).onSet(async (value) => {
+      chargeAmpsHeaterCooler.getCharacteristic(C.HeatingThresholdTemperature).onSet(this._fastSet(async (value) => {
         try {
           await this._ensureAwake();
           const amps = Math.max(5, Math.min(32, Math.round(value)));
@@ -412,7 +412,7 @@ class TeslaPlatform {
         } catch (e) {
           this.log("Charge amps error: " + e.message);
         }
-      });
+      }));
 
       chargeAmpsHeaterCooler.getCharacteristic(C.TemperatureDisplayUnits).onGet(() => {
         return C.TemperatureDisplayUnits.CELSIUS;
@@ -429,7 +429,7 @@ class TeslaPlatform {
     let maxRangeService = accessory.getServiceById(S.Switch, "maxrange") || accessory.addService(S.Switch,  n("Max Range Charge"), "maxrange");
     maxRangeService.setCharacteristic(C.Name, n("Max Range Charge"));
     maxRangeService.getCharacteristic(C.On).onGet(() => false);
-    maxRangeService.getCharacteristic(C.On).onSet(async (value) => {
+    maxRangeService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       if (!value) return;
       try {
         await this._ensureAwake();
@@ -437,13 +437,13 @@ class TeslaPlatform {
         this.log("Charge max range activated");
         setTimeout(() => maxRangeService.updateCharacteristic(C.On, false), 2000);
       } catch (e) { this.log("Max range error: " + e.message); }
-    });
+    }));
 
     // Boombox (momentary button)
     let boomboxService = accessory.getServiceById(S.Switch, "boombox") || accessory.addService(S.Switch, n("Boombox"), "boombox");
     boomboxService.setCharacteristic(C.Name, n("Boombox"));
     boomboxService.getCharacteristic(C.On).onGet(() => false);
-    boomboxService.getCharacteristic(C.On).onSet(async (value) => {
+    boomboxService.getCharacteristic(C.On).onSet(this._fastSet(async (value) => {
       if (!value) return;
       try {
         await this._ensureAwake();
@@ -451,7 +451,7 @@ class TeslaPlatform {
         this.log("Boombox activated");
         setTimeout(() => boomboxService.updateCharacteristic(C.On, false), 2000);
       } catch (e) { this.log("Boombox error: " + e.message); }
-    });
+    }));
 
   // Battery Level tile as HumiditySensor
   const oldBattTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct");
@@ -506,13 +506,28 @@ class TeslaPlatform {
     lockService.updateCharacteristic(C.LockTargetState, locked ? C.LockTargetState.SECURED : C.LockTargetState.UNSECURED);
   }
 
+  // HomeKit expects an onSet handler to answer within ~9s, but waking a sleeping car can take 30s+.
+  // Answer HomeKit immediately and run the command in the background (state is updated when it completes).
+  _fastSet(handler) {
+    return (...args) => {
+      Promise.resolve()
+        .then(() => handler(...args))
+        .catch((e) => this.log("Command error: " + e.message));
+    };
+  }
+
   async _ensureAwake() {
     const lastPoll = this._lastPollTime || 0;
     const elapsed = Date.now() - lastPoll;
     if (this.vehicleData && this.vehicleData.state === "online" && elapsed < 120000) return;
-    this.log("Vehicle may be asleep (last poll " + Math.round(elapsed/1000) + "s ago), waking...");
-    await this.tesla.wakeUp(this.vehicleId);
-    if (this.vehicleData) this.vehicleData.state = "online";
+    // Share a single wake-up between concurrent commands
+    if (!this._wakePromise) {
+      this.log("Vehicle may be asleep (last poll " + Math.round(elapsed/1000) + "s ago), waking...");
+      this._wakePromise = this.tesla.wakeUp(this.vehicleId)
+        .then(() => { if (this.vehicleData) this.vehicleData.state = "online"; })
+        .finally(() => { this._wakePromise = null; });
+    }
+    await this._wakePromise;
   }
 
   async startPolling() {
